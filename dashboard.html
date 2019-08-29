@@ -1,0 +1,365 @@
+<html>
+<title>
+BEVYWISE NETWORKS
+</title>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+.alertblink{
+  animation:blinkingText 1s infinite;
+}
+@keyframes blinkingText{
+    0%{     color: #f00;    }
+    49%{    color: #f00; }
+    50%{    color: transparent; }
+    99%{    color:transparent;  }
+    100%{   color: #f00;    }
+}
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.topnav {
+  overflow: hidden;
+  background-color: #696464;
+}
+.topnav a {
+  float: left;
+  color: #252525;
+  text-align: center;
+  padding: 3px 3px;
+  text-decoration: none;
+  font-size: 15px;
+  font-color:#252525;
+}
+.topnav a:hover {
+  background-color: #ecfcff;
+  color: black;
+}
+</style>
+  </head>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="{{ static_url('js/jquery.js') }}"></script>
+<script>
+  var p_avg=0;
+function createlinegraph(id, message)
+{
+var elementExists = document.getElementById("guage");
+	y_axis = []
+	x_axis = []
+	data = []
+	layout = {
+
+  }
+	for (var i = message.length - 1; i >= 0; i--) {
+            y_axis = message[i]["message"]
+            x_axis = message[i]["timestamp"]
+    }
+    data.push({
+            x: x_axis,
+            y: y_axis,
+            y_axis:
+            {
+              title:"DATA",
+              font: {
+              family: 'Courier New, monospace',
+              size: 18,
+              color: '#0000ff'
+            }
+          },
+            type: 'scatter',
+            mode:'lines',
+            line: {
+            color: '#181407',
+            width: 2
+          }
+
+            })
+    layout["margin"] = {
+                    l: 50,
+                    r: 50,
+                    b: 35,
+                    t: 10,
+                }
+    layout["height"] = 260;
+    layout["width"] = 550;
+layout["autosize"] = true;
+layout["xaxis"] = {}
+layout["xaxis"]["title"] = "Time";
+layout["xaxis"]["text"]="xxx"
+layout = {
+          plot_bgcolor:"white",              
+          xaxis:
+          {
+            title:"DATA",
+            font: {
+            family: 'Courier New, monospace',
+            size: 18,
+            color: '#0000ff'
+          }
+          }, 
+          yaxis:
+          {
+            title : "TIME",
+            font: {
+            family: 'Courier New, monospace',
+            size: 18,
+            color: '#0000ff'
+            }
+          },
+          margin: 
+          {
+            l: 50,
+            r: 50,
+            b: 35,
+            t: 10,
+          },
+          height:200,
+          widgh:550,
+          autosize: true,
+            yaxis1 : {
+                overlaying: 'y',
+                side: 'right',
+                color :"#37f7f7f",
+            }
+      };
+    Plotly.plot(id,data, layout,{displayModeBar: false, responsive: false});//snackbar();       
+    model=[]
+    model.push([{"time1":0,"value":0}])
+    history(model);
+    WebSocketPush();
+}
+function WebSocketPush()
+{
+  if ("WebSocket" in window) {
+    var ws = new WebSocket("ws://"+'localhost'+":8081");
+    ws.onopen = function() {
+      ws.send("routepublish");
+    };
+
+    ws.onmessage = function (evt) { 
+    var received = evt.data;
+    data = JSON.parse(received)
+    if(data['data']=='alert')
+    {
+      p_avg=data["value"]
+    }
+    if(data['data']=='bar'){
+
+          history(data['value']);
+    }
+    else{
+    mes=JSON.parse(data['msg'])
+    id=mes[0]['id'];
+    data1={}
+    data1={
+    'msg':mes[0]['msg']
+  }
+    if(p_avg !=0)
+    {
+      alertcall(p_avg,data1);
+    }
+  }
+      updateLineGraph(id,data1)
+    widgetValueInjecter("temperature",data1);
+}
+}
+}
+function updateLineGraph(graph_id, latest_data) {
+  var key = "msg";
+  time = new Date();
+  var d = [];
+  var y = [];
+  var x = [];
+  var update={}
+  latest_data = latest_data;
+  if(key != "message-integer" && key != "message-float") {
+      x.push([time]);
+      d.push(parseFloat(0));
+      y.push([latest_data[key]['message'][0]]);
+  }
+  else {
+    x.push([time]);
+    d.push(parseFloat(0));
+    y.push([latest_data]);
+  }
+  update["y"] = y;
+  update["x"] = x;
+  time = new Date();
+  var olderTime = time.setMinutes(time.getMinutes() - 1);
+  var futureTime = time.setMinutes(time.getMinutes() + 1);
+  var minuteView = {
+    xaxis: {
+      type: 'date',
+      range: [olderTime, futureTime]
+    }
+  };
+  Plotly.relayout(graph_id, minuteView);
+  Plotly.extendTraces(graph_id, update, d)
+}
+
+
+function widgetValueInjecter(id, data1) {
+  var key="msg"
+  var extra = [id];
+  var text_offset = 1;
+  var unit = 'C'; 
+  if(key == "message-integer" || key == "message-float" || key == "message-string") {
+    var message =data1[key]['message'][0] ;
+    message = Math.round(parseFloat(message) *100)/100;
+    document.getElementById(id).innerHTML = message + "   <small>" + String.fromCharCode(176)+unit + "</small>";
+  }
+  else {
+    keys = key.split(".")
+      message = data1[key]['message'][0];
+      var message = Math.round(parseFloat(message) *100)/100;
+      document.getElementById(id).innerHTML = message + "   <small>" + String.fromCharCode(176)+unit + "</small>";
+  }
+  var bgcolr = "#ffffff"
+  if (message > 500)
+  {
+  var colr = "FF0000";
+  }
+  else{
+    var colr = "2303fc";
+  }
+  for(ar in extra["offset_data"]) {
+    if(message >= parseFloat(extra["offset_data"][ar])) {
+      bgcolr = extra["offset"][extra["offset_data"][ar]]["color"]
+      colr = colorpicker(bgcolr);
+    }
+  }
+  $("#" +id).parent().parent().parent().parent().css("background-color", bgcolr);
+  $("#" +id).attr("style", "color: #" + colr);
+  $("#" +id).css("text-align",'center');
+  $("#" +id).parent().parent().parent().find(".class-header").css("color", "#" + colr);
+}
+
+function history(data1)
+{
+console.log(data1,"fdsafsdfdsf",data1.length);
+var data123 = []
+var i;
+console.log(data1)
+$(this).remove();
+for(i=0;i<data1.length && i<5;i++){
+ data123.push( {
+    x: [data1[i]['time1']],
+    y: [data1[i]['value']],
+    marker:{
+          color: '#0000FF'
+        },
+    type: 'bar'
+  })
+}
+layout = {
+          plot_bgcolor:"white",              
+          xaxis:
+          {
+            title:"DATA",
+            font: {
+            family: 'Courier New, monospace',
+            size: 18,
+            color: '#0000ff'
+          }
+          }, 
+          yaxis:
+          {
+            title : "TEMPERATURE",
+            font: {
+            family: 'Courier New, monospace',
+            size: 18,
+            color: '#0000ff'
+            }
+          },
+          margin: 
+          {
+            l: 50,
+            r: 50,
+            b: 35,
+            t: 10,
+          },
+          height:200,
+          widgh:550,
+          autosize: true,
+      };
+Plotly.newPlot('history', data123,layout,{displayModeBar: false,responsive:true},{scrollZoom: true});
+}
+function alertcall(p_avg,data3)
+{
+  var p_avg=p_avg;
+  console.log(p_avg,"***********************",data3);
+  if(p_avg <  data3['msg']['message'][0]){
+  document.getElementById("alert").innerHTML=data3['msg']['message'][0] + "ALERT!" + "<br>" + "Temperature High"; 
+}
+else
+{
+}
+}
+</script>
+<body style="position:fixed top:0 bottom:0 right:0 left:0">
+      <div class="topnav">
+<a ><img src="/static/images/extendlogo.png" style="width: 150px;"></a>
+<h4 style="text-align: center; margin: 12px 80px 0px 0px;
+    color: #fff;" >  Furnace Monitoring System</h4>
+</div>
+<div class="mt-2 container-fluid">
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h4> Live Temperature Data </h4>
+        </div>
+        <div class="card-body">
+          <div id="guage"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+       <div class="card-header">
+         <h4> Hourly Average Chart -Temperature </h4>
+        </div>
+        <div class="card-body">
+          <div id="history"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class ="mt-2 row">
+    <div class="col-md-6">
+      <div class="card" style="background-color: rgb(15 157 88); color: rgb(255, 255, 255); height:300px">
+        <div class="card-header">
+          <span class="text-center" style="font-size: 20px; text-align:center"><h4 style="color:black ">Live Temperature Data</h4></span>
+        </div>
+        <div class="card-body">
+          <div id ="div">
+            <h1 id="temperature" class="text mt-5 font-weight-bold font-italic wid" style="text-align:center;"></h1>
+            <small id="unit"></small>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card" id="alert1" style="background-color: rgb(18,238,62); color: rgb(255, 255, 255); height:300px ">
+        <div class="card-header">
+          <span class="text-center" style="font-size: 20px; text-align:center"><h4 style="color:black"> Higher Than Last Hour Average Alarm</h4></span>
+        </div>
+        <div class="card-body">
+          <div id="sa">
+            <h1 id ="alert" c class="text mt-5 font-weight-bold font-italic wid alertblink"style="text-align:center; color:red"></h1>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+createlinegraph('guage', [{'message' : [0], 'timestamp' : [0]}]);
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+</body>
+</html>
+
