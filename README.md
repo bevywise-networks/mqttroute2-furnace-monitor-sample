@@ -1,9 +1,10 @@
-# Furnace Monitoring Application over MQTTRoute
+# IoT Application for Industrial Furnace Monitoring over MQTTRoute
 
 This is an outcome of a hackathon of building an IoT Application in a day.  One of the developers built an applicaton for the Furnace temperature monitoring using the MQTTRoute.
 
 # About MQTTRoute 
 
+The blog [IoT Application](https://www.bevywise.com/blog/iot-application-in-a-day/) development explains how to build application for your IoT usecases in a day.
 [MQTTRoute](https://bevywise.com/mqtt-broker/) is an IoT Application development platform that has an inbuilt MQTT Broker and extensions of User Interface & embedding your AI & ML alogrithms. The Broker can be run on windows, linux & Mac and available for a [free download](https://bevywise.com/mqtt-broker/download.html).
 
 ### How to set up the system. 
